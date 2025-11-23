@@ -14,7 +14,7 @@ This results in a nearly infinite number of configurations.
 
 Suppose the goal is to estimate the straight-line distance between the start and end of the polymer chain. 
 The theoretical probability density function for this distance is $$P(R) = 4\pi R^2\left(\frac{3}{2\pi\langle r^2\rangle}\right)^{3/2}\exp\left(-\frac{3R^2}{2\langle r^2\rangle}\right), $$
-where $R$ is the end-to-end distance, and the mean square position of the units is $\langle r^2\rangle = N u^2$ where $N$ is the number of units in the chain and $u$ is ithe length of each unit. 
+where $R$ is the end-to-end distance, and the mean square position of the units is $\langle r^2\rangle = N u^2$ where $N$ is the number of units in the chain and $u$ is the length of each unit. 
 For simplicity, we'll work with $u=1$. 
 
 
@@ -37,10 +37,52 @@ The distance between the origin and the end of the chain $(x,y,z)$ can be calcul
 Write a function that takes $n$ and returns the distance between the start and end points of a chain. 
 Use vector-based operations to increase the efficiency of your function.
 
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r}
+
+return_n_dist <- function(n){ #, seed = 1202
+  
+  #set.seed(seed)
+  
+  theta <- runif(n, min = 0, max = 2*pi)
+  phi <- runif(n, min = 0, max = pi)
+  
+  x <- cos(theta)*sin(phi)
+  y <- sin(theta)*sin(phi)
+  z <- cos(phi)
+  
+  # print(x)
+  # print(y)
+  # print(z)
+  
+  chain_dist <- sqrt(sum(x)^2+sum(y)^2+sum(z)^2)
+  # print(origin_dist)
+  # chain_dist <- sum(origin_dist)
+  
+  return(chain_dist)
+  
+}
+
+# return_n_dist(n = 2)
+
+```
+
+
 
 ## Distribution of Unconstrained Links
 
 Simulate 10000 chains and save the distribution of the end-to-end distance.
+
+
+```{r}
+set.seed(1202)
+uncon_sim_1000 <- lapply(rep(10, 1000), return_n_dist) %>% unlist()
+```
 
 
 
@@ -50,15 +92,88 @@ We can simulate a simple constrained orientation model by restricting the relati
 We’ll prevent adjacent links from orienting themselves such that there is an acute angle smaller than, say 45° between them. 
 We can do this by checking the angle between adjacent links after choosing a random orientation and repeatedly choosing the random orientation until that angle is larger than 45°.
 
+```{r}
+
+constrained_chain <- function(n){
+  
+  theta <- runif(1, min = 0, max = 2*pi)
+  phi <- runif(1, min = 0, max = pi)
+  
+  x <- cos(theta)*sin(phi)
+  y <- sin(theta)*sin(phi)
+  z <- cos(phi)
+  
+  vector1 <- c(x,y,z)
+  
+  vectors <- matrix(c(x, y, z), ncol = 1)
+
+  
+    while (ncol(vectors) < n){
+    
+    theta <- runif(1, min = 0, max = 2*pi)
+    phi <- runif(1, min = 0, max = pi)
+    
+    x <- cos(theta)*sin(phi)
+    y <- sin(theta)*sin(phi)
+    z <- cos(phi)
+    
+    new_vector <- c(x, y, z)
+    
+    last_vector <- vectors[, ncol(vectors)]
+    
+    if ((pi - acos(sum(last_vector * new_vector))) >= pi/4){
+      vectors <- cbind(vectors, new_vector)
+    }
+  }
+  
+  poly_length <- sqrt(sum(rowSums(vectors)^2))
+  
+  return(poly_length)
+  
+}
+
+# constrained_chain(10)
+
+
+```
+
 
 ## Single Constrained Link Function
 
 Write a function that takes $n$ and returns the distance between the start and end points of a chain. 
 Can you think of a way to use vectorized functions to accomplish this task? Why or why not? 
 
+
+I wrote the function above but not sure if my way of determine the angle between the vectors was correct. I found the angle between the vectors then subtracted this from pi given they are touching end to end, this *should* be the smallest angle.
+
+I used vectors and matrices to store the objects and when it came to finding the final length of the polymer I summed across the rows, squared the values, summed these, then square rooted to get the final length.
+
+
 ## Distribution of Constrained Links
 
 Simulate 10000 chains and save the distribution of the end-to-end distance.
 Plot the density of the unconstrained links and the density of constrained links on the same plot -- how much has the distribution changed?
+
+
+```{r}
+set.seed(1202)
+con_sim_1000 <- lapply(rep(10, 1000), constrained_chain) %>%  unlist()
+
+
+ggplot() +
+  geom_density(aes(x = uncon_sim_1000,fill = "Unconstrained"), , alpha = 0.5) +
+  geom_density(aes(x = con_sim_1000, fill = "Constrained"), alpha = 0.5) +
+  scale_color_manual(values = c("Unconstrained" = "blue",
+                                "Constrained" = "red")) +
+  labs(
+    title = "Comparison of Polymer Length Densities When Constrained and Unconstrained",
+    x = "Length",
+    y = "Density",
+    fill = "Data"
+  )
+  
+```
+
+
 
 
